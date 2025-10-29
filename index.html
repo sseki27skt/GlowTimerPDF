@@ -1,8 +1,7 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-SWPN9LKKDE"></script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-SWPN9LKKDE"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
@@ -27,21 +26,47 @@
         
         <div id="drop-prompt">
             <div id="drop-prompt-text">
-                <div class="prompt-title">ここにPDFをドラッグ＆ドロップ</div>
+                <div class="prompt-title">
+                    ここにPDFをドラッグ＆ドロップ
+                    <span class="prompt-subtitle">Drag & Drop PDF file here</span>
+                </div>
                 <ul class="prompt-controls">
-                    <li><span class="key">[ Space ] </span> タイマー スタート / 一時停止</li>
-                    <li><span class="key">[ ← ] / [ → ]</span> ページ送り (タイマーリセット)</li>
-                    <li><span class="key">[ R ]</span> タイマーリセット (現在のページ)</li>
-                    <li><span class="key">[ F ]</span> 全画面表示</li>
-                    <li><span class="key">[ S ]</span> 設定パネル</li>
+                    <li>
+                        <span class="key">[ Space ] / [ P ]</span> 
+                        <span class="desc">
+                            タイマー スタート / 一時停止
+                            <span class="en-text">Start / Pause</span>
+                        </span>
+                    </li>
+                    <li>
+                        <span class="key">[ ← ] / [ → ]</span> 
+                        <span class="desc">
+                            ページ送り (タイマーリセット)
+                            <span class="en-text">Next / Prev Page (Reset Timer)</span>
+                        </span>
+                    </li>
+                    <li>
+                        <span class="key">[ R ]</span> 
+                        <span class="desc">
+                            タイマーリセット (現在のページ)
+                            <span class="en-text">Reset Timer (Current Page)</span>
+                        </span>
+                    </li>
+                    <li>
+                        <span class="key">[ F ]</span> 
+                        <span class="desc">
+                            全画面表示
+                            <span class="en-text">Fullscreen</span>
+                        </span>
+                    </li>
+                    <li>
+                        <span class="key">[ S ]</span> 
+                        <span class="desc">
+                            設定パネル
+                            <span class="en-text">Settings</span>
+                        </span>
+                    </li>
                 </ul>
-
-                <div class="prompt-text">
-                    新しいPDFを読み込むには、再度ドラッグ＆ドロップしてください。
-                    
-            </div>
-            </div>
-            
             </div>
         </div>
         </div>
@@ -53,23 +78,38 @@
     <div id="loader"></div>
 
     <div id="drag-overlay">
-        <div id="drag-overlay-text">PDFファイルをここにドロップ</div>
+        <div id="drag-overlay-text">
+            PDFファイルをここにドロップ
+            <span class="drag-overlay-subtext">Drop PDF file here</span>
+        </div>
     </div>
 
     <div id="countdown-overlay"></div>
 
     <div id="config-panel">
-        <div id="config-title">設定 (Sキーで閉じる)</div>
+        <div id="config-title">
+            設定 (Sキーで閉じる)
+            <span class="en-text-config">Settings / Close: S key</span>
+        </div>
         <div class="config-row">
-            <label for="config-total-time">プレゼン時間 (秒)</label>
+            <label for="config-total-time">
+                プレゼン時間 (秒)
+                <span class="en-text-config-label">Total Time (sec)</span>
+            </label>
             <input type="number" id="config-total-time" value="60" min="1">
         </div>
         <div class="config-row">
-            <label for="config-use-countdown">開始前カウントダウン</label>
+            <label for="config-use-countdown">
+                開始前カウントダウン
+                <span class="en-text-config-label">Use Countdown</span>
+            </label>
             <input type="checkbox" id="config-use-countdown" checked>
         </div>
         <div class="config-row">
-            <label for="config-countdown-seconds">カウントダウン秒数</label>
+            <label for="config-countdown-seconds">
+                カウントダウン秒数
+                <span class="en-text-config-label">Countdown (sec)</span>
+            </label>
             <input type="number" id="config-countdown-seconds" value="3" min="1">
         </div>
     </div>

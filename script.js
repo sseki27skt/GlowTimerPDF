@@ -1,10 +1,10 @@
-// script.js (設定機能対応版)
+// script.js (設定機能・日英併記対応版)
 
 // 1. pdf.js ワーカーの設定
 const { pdfjsLib } = window;
 pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
-// ★ 2. グローバル設定
+// 2. グローバル設定
 const appConfig = {
     totalTime: 60,
     useCountdown: true,
@@ -17,17 +17,17 @@ const appState = {
     currentPage: 1,
     totalPages: 0,
     timerId: null,
-    remainingTime: 60, // 初期値は appConfig と連動させる
+    remainingTime: 60,
     timerState: 'stopped', // 'stopped', 'running', 'paused', 'countdown'
     renderTask: null,
     countdownTimerId: null,
     countdownTime: 3,
 };
 
-// 4. DOM要素 (グローバルスコープで宣言)
+// 4. DOM要素
 let fileInput, canvas, ctx, timerDisplay, loader, body, rootStyle;
 let dragOverlay, countdownOverlay;
-let configPanel, configTotalTime, configUseCountdown, configCountdownSeconds; // ★ 設定UI
+let configPanel, configTotalTime, configUseCountdown, configCountdownSeconds;
 
 // 5. アプリケーションの初期化
 document.addEventListener('DOMContentLoaded', () => {
@@ -42,8 +42,6 @@ document.addEventListener('DOMContentLoaded', () => {
     countdownOverlay = document.getElementById('countdown-overlay');
     body = document.body;
     rootStyle = document.documentElement.style;
-
-    // ★ 設定パネルUIの取得
     configPanel = document.getElementById('config-panel');
     configTotalTime = document.getElementById('config-total-time');
     configUseCountdown = document.getElementById('config-use-countdown');
@@ -53,18 +51,18 @@ document.addEventListener('DOMContentLoaded', () => {
     fileInput.addEventListener('change', handleFileChange);
     window.addEventListener('keydown', handleKeyDown);
     setupDragDropListeners();
-    setupConfigListeners(); // ★ 設定UIのリスナー
+    setupConfigListeners();
 
     // 5.3. 初期UI状態の設定
-    resetTimer(); // appConfig.totalTime を反映させるため
+    resetTimer(); 
 });
 
 
-// 6. PDF処理 (loadPdfFile, handleFileChange, renderPage)
-// ... (このセクションは変更ありません) ...
+// 6. PDF処理
 async function loadPdfFile(file) {
     if (!file || file.type !== 'application/pdf') {
-        alert('PDFファイルのみドロップしてください。');
+        // ▼ 修正: アラートを日英併記
+        alert('PDFファイルのみドロップしてください。\nPlease drop PDF files only.');
         return;
     }
 
@@ -72,7 +70,7 @@ async function loadPdfFile(file) {
     if (appState.pdfDoc) {
         appState.pdfDoc.destroy();
         appState.pdfDoc = null;
-        body.classList.remove('pdf-loaded'); // ★ PDFクリア
+        body.classList.remove('pdf-loaded'); 
     }
 
     try {
@@ -87,12 +85,13 @@ async function loadPdfFile(file) {
         await renderPage(appState.currentPage);
         resetTimer();
 
-        body.classList.add('pdf-loaded'); // ★ PDFロード成功
+        body.classList.add('pdf-loaded'); 
 
     } catch (error) {
         console.error('PDFの読み込みに失敗しました:', error);
-        alert('PDFの読み込みに失敗しました。');
-        body.classList.remove('pdf-loaded'); // ★ 失敗時も非表示のまま
+        // ▼ 修正: アラートを日英併記
+        alert('PDFの読み込みに失敗しました。\nFailed to load PDF.');
+        body.classList.remove('pdf-loaded'); 
     } finally {
         loader.style.display = 'none';
     }
@@ -133,28 +132,26 @@ async function renderPage(pageNum) {
 }
 
 // 7. タイマーロジック
-
 function startCountdown() {
     if (appState.timerState === 'countdown' || appState.timerState === 'running') return;
     clearInterval(appState.timerId);
     clearInterval(appState.countdownTimerId);
 
     appState.timerState = 'countdown';
-    appState.countdownTime = appConfig.countdownSeconds; // ★ 設定値を参照
+    appState.countdownTime = appConfig.countdownSeconds; 
 
     updateTimerUI();
-    updateCountdownUI(); // 最初の秒数 (例: 3) を表示
+    updateCountdownUI(); 
 
     appState.countdownTimerId = setInterval(() => {
         appState.countdownTime--;
         updateCountdownUI();
 
-        // ▼ 修正: '< 0' に変更 (0 を 1秒表示)
-        if (appState.countdownTime <= 0) {
+        if (appState.countdownTime <= 0) { // 「0」を表示せずに終了
             clearInterval(appState.countdownTimerId);
             appState.countdownTimerId = null;
             
-            updateCountdownUI(); // UIを非表示
+            updateCountdownUI(); 
             startTimer();
         }
     }, 1000);
@@ -184,14 +181,12 @@ function pauseTimer() {
 }
 
 function resumeTimer() {
-    // 'paused' 状態からのみ再開
     if (appState.timerState !== 'paused') return;
     
-    // ★ 修正: 設定に応じて即時スタートかカウントダウンか
     if (appConfig.useCountdown && appState.remainingTime === appConfig.totalTime) {
         startCountdown();
     } else {
-        startTimer(); // 一時停止からは即時再開
+        startTimer(); 
     }
 }
 
@@ -201,7 +196,7 @@ function resetTimer() {
     clearInterval(appState.countdownTimerId); 
     appState.countdownTimerId = null;
     
-    appState.remainingTime = appConfig.totalTime; // ★ 設定値を参照
+    appState.remainingTime = appConfig.totalTime; 
     appState.timerState = 'stopped';
     
     updateTimerUI();
@@ -231,8 +226,7 @@ function updateTimerUI() {
     }
 
     const time = appState.remainingTime;
-    // ▼ 修正: 右上のタイマーが「0」を1秒間表示するロジック
-    const displayTime = Math.ceil(time);
+    const displayTime = Math.ceil(time); // 「0」を1秒表示するロジック
     timerDisplay.textContent = displayTime;
 
     let currentHue;
@@ -243,7 +237,6 @@ function updateTimerUI() {
     const saturation = 90, lightness = 55;
 
     if (appState.timerState !== 'countdown') {
-        // ▼ 修正: 初期状態の判定を appConfig.totalTime に
         if (appState.timerState === 'stopped' && time === appConfig.totalTime) {
             newColorHsl = 'var(--color-gray)';
             newColorHsla = 'rgba(52, 73, 94, 0.5)';
@@ -286,8 +279,7 @@ function updateTimerUI() {
 function updateCountdownUI() {
     if (!countdownOverlay) return;
 
-    // ▼ 修正: '>= 0' (0を表示)
-    if (appState.timerState === 'countdown' && appState.countdownTime > 0) {
+    if (appState.timerState === 'countdown' && appState.countdownTime > 0) { // 「0」は表示しない
         countdownOverlay.textContent = appState.countdownTime;
         countdownOverlay.style.display = 'flex';
         setTimeout(() => { countdownOverlay.style.opacity = '1'; }, 10); 
@@ -303,18 +295,18 @@ function updateCountdownUI() {
 
 // 9. キーボードショートカット
 function handleKeyDown(e) {
-    // ★ 設定パネル表示中は、'S' 以外のキー操作を無効化
     if (body.classList.contains('show-settings') && e.key !== 's' && e.key !== 'S') {
         return;
     }
 
-    if (!appState.pdfDoc && e.key !== 's' && e.key !== 'S') { // SキーはPDFロード前でも許可
+    if (!appState.pdfDoc && e.key !== 's' && e.key !== 'S') { 
         return;
     }
     if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
         return; 
     }
 
+    // Pキーを削除
     const preventKeys = ['ArrowRight', 'ArrowLeft', ' ', 'Backspace', 'Enter', 'r', 'f', 'F', 's', 'S'];
     if (preventKeys.includes(e.key)) {
         e.preventDefault();
@@ -339,17 +331,15 @@ function handleKeyDown(e) {
             break;
 
         case ' ':
+            // Pキーのケースを削除 (Spaceに統合)
             if (appState.timerState === 'running') {
                 pauseTimer();
             } else if (appState.timerState === 'countdown') {
                 pauseTimer();
             } else {
-                // ★ 修正: 設定を反映
-                // (一時停止 'paused' からの再開も含む)
                 if (appConfig.useCountdown && appState.remainingTime === appConfig.totalTime) {
                     startCountdown();
                 } else {
-                    // 一時停止からの再開 or カウントダウン無効
                     startTimer();
                 }
             }
@@ -365,14 +355,14 @@ function handleKeyDown(e) {
             toggleFullScreen();
             break;
         
-        case 's': // ★ 設定パネル
+        case 's':
         case 'S':
             toggleSettingsPanel();
             break;
     }
 }
 
-// 10. ドラッグ＆ドロップ設定 (変更なし)
+// 10. ドラッグ＆ドロップ設定
 function setupDragDropListeners() {
     window.addEventListener('dragover', (e) => {
         e.preventDefault();
@@ -401,7 +391,7 @@ function setupDragDropListeners() {
     });
 }
 
-// 11. 全画面切り替え (変更なし)
+// 11. 全画面切り替え
 function toggleFullScreen() {
     if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen();
@@ -412,14 +402,13 @@ function toggleFullScreen() {
     }
 }
 
-// ★ 12. 設定パネル (新規追加)
+// 12. 設定パネル
 function setupConfigListeners() {
-    // UIの値を appConfig に反映
     configTotalTime.addEventListener('change', (e) => {
         const value = parseInt(e.target.value, 10);
         if (value > 0) {
             appConfig.totalTime = value;
-            resetTimer(); // 変更をタイマーに反映
+            resetTimer(); 
         }
     });
     configUseCountdown.addEventListener('change', (e) => {
@@ -435,7 +424,6 @@ function setupConfigListeners() {
 
 function toggleSettingsPanel() {
     body.classList.toggle('show-settings');
-    // パネルを開いたときに、現在の設定値をUIに反映
     if (body.classList.contains('show-settings')) {
         configTotalTime.value = appConfig.totalTime;
         configUseCountdown.checked = appConfig.useCountdown;
