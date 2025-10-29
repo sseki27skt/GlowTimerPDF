@@ -1,0 +1,356 @@
+:root {
+    /* 色定義 (グレーと白のみ) */
+    --color-gray: #34495e;
+    --color-light-gray: #ecf0f1;
+
+    /* タイマー状態変数 (JSから 'hsl(H, S, L)' 形式で直接設定) */
+    --timer-color: var(--color-gray);
+    --timer-color-alpha: rgba(52, 73, 94, 0.5);
+}
+
+/* * 1. 基本レイアウトとリセット 
+ */
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    background-color: #222; /* デフォルトの背景色 */
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--color-light-gray);
+    
+    /* タイマーの視覚領域 (box-shadowで実装) */
+    box-sizing: border-box; /* box-shadowが内側に入るように */
+    box-shadow: inset 0 0 0 0 var(--timer-color-alpha);
+    transition: box-shadow 0.3s ease-out;
+}
+
+/* * 2. アニメーション定義 
+ */
+
+/* 呼吸アニメーション (タイマー実行中) */
+@keyframes breathing {
+    0% { box-shadow: inset 0 0 10px 5px var(--timer-color-alpha); }
+    50% { box-shadow: inset 0 0 25px 20px var(--timer-color-alpha); }
+    100% { box-shadow: inset 0 0 10px 5px var(--timer-color-alpha); }
+}
+
+/* ▼ 修正: 点滅 (blinking) を "高速な明滅" (flashing) に変更 ▼ */
+@keyframes flashing {
+    0%   { box-shadow: inset 0 0  5px  2px var(--timer-color-alpha); }
+    50%  { box-shadow: inset 0 0 30px 25px var(--timer-color-alpha); }
+    100% { box-shadow: inset 0 0  5px  2px var(--timer-color-alpha); }
+}
+
+/* * 3. タイマー状態クラス (bodyに付与) 
+ */
+body.timer-running {
+    animation: breathing 2s infinite ease-in-out;
+}
+body.timer-paused {
+    animation-play-state: paused;
+}
+
+/* ▼ 修正: 時間超過時のアニメーションを変更 ▼ */
+body.timer-over {
+    /* 以前の background-color と blinking アニメーションを削除 */
+    animation: flashing 0.2s infinite ease-in-out; /* 0.7秒サイクルの高速な「光の明滅」 */
+}
+
+
+/* * 4. PDFビューア (中央配置・マージン狭め)
+ */
+#pdf-viewer-container {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    
+    /* アスペクト比を16:9に維持しつつ、画面の99%を最大幅/高さとする */
+    width: 98vw;
+    height: 98vh;
+    max-width: calc(98vh * (16 / 9)); /* 縦基準で横幅計算 */
+    max-height: calc(98vw * (9 / 16)); /* 横基準で縦幅計算 */
+    
+    aspect-ratio: 16 / 9;
+    background: #000;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    border-radius: 4px;
+}
+
+#pdf-canvas {
+    width: 100%;
+    height: 100%;
+    border-radius: 4px;
+}
+
+/* * 5. UIコントロール 
+ */
+
+/* ファイル入力 (非表示) */
+#fileInput {
+    display: none;
+}
+
+/* デジタルタイマー表示 */
+#timerDisplay {
+    position: absolute;
+    top: 15px;
+    right: 25px;
+    z-index: 100;
+    font-size: 36px;
+    font-weight: 200;
+    font-family: "SF Mono", "Consolas", monospace;
+    color: var(--color-light-gray);
+    opacity: 0.4;
+    text-shadow: 0 0 10px #000;
+}
+
+/* ローディングスピナー */
+#loader {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 60px;
+    height: 60px;
+    margin: -30px 0 0 -30px;
+    border: 6px solid #f3f3f3;
+    border-top: 6px solid var(--color-gray); /* 緑固定だと違和感があるのでグレーに変更 */
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    z-index: 200;
+    display: none; /* JSで制御 */
+}
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* * 6. ドラッグ＆ドロップ オーバーレイ
+ */
+
+#drag-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.7);
+    z-index: 1000;
+    
+    /* 普段は非表示 (JSで 'display: flex' に変更) */
+    display: none; 
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+
+    /* テキストを中央に配置 */
+    /* display: flex; (JSで制御) */
+    align-items: center;
+    justify-content: center;
+}
+
+#drag-overlay-text {
+    font-size: 24px;
+    color: white;
+    padding: 20px 40px;
+    border: 3px dashed var(--color-light-gray);
+    border-radius: 8px;
+}
+
+/* JSがbodyに追加するクラス */
+body.dragging #drag-overlay {
+    display: flex;
+    opacity: 1;
+}
+
+/*
+ * * 7. 3秒カウントダウン
+ */
+
+/* カウントダウンの数字 (3, 2, 1) */
+#countdown-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 900; /* (drag-overlayよりは下) */
+    
+    display: none; /* 普段は非表示 */
+    opacity: 0;
+    
+    /* 数字を中央に配置 */
+    align-items: center;
+    justify-content: center;
+    
+    /* スライドに重なるように */
+    font-size: 40vh; /* 画面の高さの40% */
+    font-weight: 700;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: white;
+    text-shadow: 0 0 50px rgba(0, 0, 0, 0.7);
+
+    /* フェードイン・アウト */
+    transition: opacity 0.1s ease-in-out; 
+}
+
+/* カウントダウン中の白い光 (マージン) */
+@keyframes countdown-glow {
+    0%   { box-shadow: inset 0 0 10px 5px rgba(236, 240, 241, 0.2); } /* light-gray */
+    50%  { box-shadow: inset 0 0 30px 25px rgba(236, 240, 241, 0.7); }
+    100% { box-shadow: inset 0 0 10px 5px rgba(236, 240, 241, 0.2); }
+}
+
+/* カウントダウン中にbodyに付与するクラス */
+body.timer-countdown {
+    animation: countdown-glow 1s infinite ease-in-out; /* 1秒ごとにパルス */
+}
+
+/*
+ * * 8. 設定パネル
+ */
+
+#config-panel {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 2000; /* 最前面 */
+    
+    background-color: rgba(30, 30, 30, 0.95);
+    border: 1px solid var(--color-gray);
+    border-radius: 8px;
+    padding: 20px;
+    width: 300px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+
+    color: var(--color-light-gray);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+    /* 普段は非表示 */
+    display: none;
+    opacity: 0;
+    transition: opacity 0.2s ease-out;
+}
+
+/* JSがbodyに追加するクラスで表示 */
+body.show-settings #config-panel {
+    display: block;
+    opacity: 1;
+}
+
+#config-title {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--color-gray);
+    padding-bottom: 10px;
+}
+
+.config-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+}
+.config-row label {
+    font-size: 14px;
+}
+.config-row input {
+    font-size: 14px;
+    width: 60px;
+}
+.config-row input[type="checkbox"] {
+    width: auto;
+    height: 18px;
+    width: 18px;
+}
+
+/*
+ * * 9. ドロッププロンプト (PDF未ロード時)
+ */
+#drop-prompt {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 50; /* canvas(z-indexなし)の上、timerDisplay(z-index: 100)の下 */
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    background-color: #111; /* ビューア背景より少し明るい黒 */
+    border-radius: 4px; /* 親コンテナの角丸に合わせる */
+
+    /* JSによる表示制御 (デフォルトは表示) */
+    opacity: 1;
+    transition: opacity 0.3s ease-out;
+    pointer-events: none; /* ドロップイベントを妨げないように */
+}
+
+#drop-prompt-text {
+    /* ▼ 以下のスタイルを変更 ▼ */
+    font-size: 16px;
+    color: var(--color-gray);
+    text-align: left; /* 中央揃え -> 左揃え */
+    line-height: 1.6; /* 1.5 -> 1.6 */
+    border: 3px dashed var(--color-gray);
+    padding: 20px 30px 25px 30px; /* パディング調整 */
+    border-radius: 8px;
+    background-color: rgba(0, 0, 0, 0.2); /* 背景を少し追加 */
+}
+
+/* PDFロード後にJSが body.pdf-loaded を付与 */
+body.pdf-loaded #drop-prompt {
+    opacity: 0;
+    pointer-events: none;
+    /* display: none だと transition が効かないため opacity で制御 */
+}
+
+/* ★ 新規追加: ドロッププロンプト内のリストスタイル */
+.prompt-title {
+    font-size: 20px;
+    font-weight: 600;
+    text-align: center; /* タイトルは中央 */
+    margin-bottom: 15px;
+    color: var(--color-light-gray); /* 少し目立たせる */
+}
+
+.prompt-text {
+    margin-bottom: 15px;
+    font-size: 14px;
+    text-align: center;
+    margin-top: 20px;
+    color: var(--color-light-gray); 
+}
+
+.prompt-controls {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.prompt-controls li {
+    margin-bottom: 8px;
+    color: var(--color-light-gray); /* ★ この行を追加 */
+}
+.prompt-controls li:last-child {
+    margin-bottom: 0;
+}
+
+.prompt-controls .key {
+    display: inline-block;
+    background-color: #333;
+    color: var(--color-light-gray);
+    border: 1px solid #555;
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-family: "SF Mono", "Consolas", monospace;
+    font-size: 14px;
+    min-width: 140px; /* キー表示の幅を揃える */
+    text-align: center;
+    margin-right: 10px;
+}

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GlowTimer PDF Presenter</title>
+
+    <link rel="stylesheet" href="style.css">
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+
+    <script src="script.js" defer></script>
+</head>
+<body class="timer-stopped">
+
+<div id="pdf-viewer-container">
+        <canvas id="pdf-canvas"></canvas>
+        
+        <div id="drop-prompt">
+            <div id="drop-prompt-text">
+                <div class="prompt-title">ここにPDFをドラッグ＆ドロップ</div>
+                <ul class="prompt-controls">
+                    <li><span class="key">[ Space ] </span> タイマー スタート / 一時停止</li>
+                    <li><span class="key">[ ← ] / [ → ]</span> ページ送り (タイマーリセット)</li>
+                    <li><span class="key">[ R ]</span> タイマーリセット (現在のページ)</li>
+                    <li><span class="key">[ F ]</span> 全画面表示</li>
+                    <li><span class="key">[ S ]</span> 設定パネル</li>
+                </ul>
+
+                <div class="prompt-text">
+                    新しいPDFを読み込むには、再度ドラッグ＆ドロップしてください。
+                    
+            </div>
+            </div>
+            
+            </div>
+        </div>
+        </div>
+
+    <input type="file" id="fileInput" accept="application/pdf">
+
+    <div id="timerDisplay">60</div>
+
+    <div id="loader"></div>
+
+    <div id="drag-overlay">
+        <div id="drag-overlay-text">PDFファイルをここにドロップ</div>
+    </div>
+
+    <div id="countdown-overlay"></div>
+
+    <div id="config-panel">
+        <div id="config-title">設定 (Sキーで閉じる)</div>
+        <div class="config-row">
+            <label for="config-total-time">プレゼン時間 (秒)</label>
+            <input type="number" id="config-total-time" value="60" min="1">
+        </div>
+        <div class="config-row">
+            <label for="config-use-countdown">開始前カウントダウン</label>
+            <input type="checkbox" id="config-use-countdown" checked>
+        </div>
+        <div class="config-row">
+            <label for="config-countdown-seconds">カウントダウン秒数</label>
+            <input type="number" id="config-countdown-seconds" value="3" min="1">
+        </div>
+    </div>
+
+</body>
+</html>
