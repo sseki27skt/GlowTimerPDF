@@ -10,18 +10,21 @@
 
 /* * 1. 基本レイアウトとリセット 
  */
-html, body {
+html,
+body {
     margin: 0;
     padding: 0;
     width: 100vw;
     height: 100vh;
     overflow: hidden;
-    background-color: #222; /* デフォルトの背景色 */
+    background-color: #222;
+    /* デフォルトの背景色 */
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: var(--color-light-gray);
-    
+
     /* タイマーの視覚領域 (box-shadowで実装) */
-    box-sizing: border-box; /* box-shadowが内側に入るように */
+    box-sizing: border-box;
+    /* box-shadowが内側に入るように */
     box-shadow: inset 0 0 0 0 var(--timer-color-alpha);
     transition: box-shadow 0.3s ease-out;
 }
@@ -31,16 +34,32 @@ html, body {
 
 /* 呼吸アニメーション (タイマー実行中) */
 @keyframes breathing {
-    0% { box-shadow: inset 0 0 10px 5px var(--timer-color-alpha); }
-    50% { box-shadow: inset 0 0 25px 20px var(--timer-color-alpha); }
-    100% { box-shadow: inset 0 0 10px 5px var(--timer-color-alpha); }
+    0% {
+        box-shadow: inset 0 0 10px 5px var(--timer-color-alpha);
+    }
+
+    50% {
+        box-shadow: inset 0 0 25px 20px var(--timer-color-alpha);
+    }
+
+    100% {
+        box-shadow: inset 0 0 10px 5px var(--timer-color-alpha);
+    }
 }
 
 /* 高速な明滅 (flashing) */
 @keyframes flashing {
-    0%   { box-shadow: inset 0 0  5px  2px var(--timer-color-alpha); }
-    50%  { box-shadow: inset 0 0 30px 25px var(--timer-color-alpha); }
-    100% { box-shadow: inset 0 0  5px  2px var(--timer-color-alpha); }
+    0% {
+        box-shadow: inset 0 0 5px 2px var(--timer-color-alpha);
+    }
+
+    50% {
+        box-shadow: inset 0 0 30px 25px var(--timer-color-alpha);
+    }
+
+    100% {
+        box-shadow: inset 0 0 5px 2px var(--timer-color-alpha);
+    }
 }
 
 /* * 3. タイマー状態クラス (bodyに付与) 
@@ -48,6 +67,7 @@ html, body {
 body.timer-running {
     animation: breathing 2s infinite ease-in-out;
 }
+
 body.timer-paused {
     animation-play-state: paused;
 }
@@ -60,25 +80,31 @@ body.timer-over {
 /* * 4. PDFビューア (中央配置・マージン狭め)
  */
 #pdf-viewer-container {
-    position: relative; /* ★ ドロッププロンプトの配置基準 */
+    position: relative;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    
+
     width: 98vw;
     height: 98vh;
     max-width: calc(98vh * (16 / 9));
     max-height: calc(98vw * (9 / 16));
-    
+
     aspect-ratio: 16 / 9;
     background: #000;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     border-radius: 4px;
+
+    /* ▼ 追加: キャンバスが16:9より細長い/平たい場合に中央寄せする */
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 #pdf-canvas {
-    width: 100%;
-    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    display: block;
     border-radius: 4px;
 }
 
@@ -119,9 +145,15 @@ body.timer-over {
     z-index: 200;
     display: none;
 }
+
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* * 6. ドラッグ＆ドロップ オーバーレイ
@@ -135,8 +167,8 @@ body.timer-over {
     bottom: 0;
     background-color: rgba(0, 0, 0, 0.7);
     z-index: 1000;
-    
-    display: none; 
+
+    display: none;
     opacity: 0;
     transition: opacity 0.2s ease-in-out;
 
@@ -154,12 +186,15 @@ body.timer-over {
     text-align: center;
     line-height: 1.4;
 }
+
 .drag-overlay-subtext {
     display: block;
     font-size: 18px;
     margin-top: 5px;
-    color: #ccc; /* 明るいグレー */
+    color: #ccc;
+    /* 明るいグレー */
 }
+
 /* ▲ 修正ここまで ▲ */
 
 
@@ -178,28 +213,37 @@ body.dragging #drag-overlay {
     left: 0;
     width: 100vw;
     height: 100vh;
-    z-index: 900; 
-    
-    display: none; 
+    z-index: 900;
+
+    display: none;
     opacity: 0;
-    
+
     align-items: center;
     justify-content: center;
-    
+
     font-size: 40vh;
     font-weight: 700;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: white;
     text-shadow: 0 0 50px rgba(0, 0, 0, 0.7);
 
-    transition: opacity 0.1s ease-in-out; 
+    transition: opacity 0.1s ease-in-out;
 }
 
 @keyframes countdown-glow {
-    0%   { box-shadow: inset 0 0 10px 5px rgba(236, 240, 241, 0.2); }
-    50%  { box-shadow: inset 0 0 30px 25px rgba(236, 240, 241, 0.7); }
-    100% { box-shadow: inset 0 0 10px 5px rgba(236, 240, 241, 0.2); }
+    0% {
+        box-shadow: inset 0 0 10px 5px rgba(236, 240, 241, 0.2);
+    }
+
+    50% {
+        box-shadow: inset 0 0 30px 25px rgba(236, 240, 241, 0.7);
+    }
+
+    100% {
+        box-shadow: inset 0 0 10px 5px rgba(236, 240, 241, 0.2);
+    }
 }
+
 body.timer-countdown {
     animation: countdown-glow 1s infinite ease-in-out;
 }
@@ -213,8 +257,8 @@ body.timer-countdown {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    z-index: 2000; 
-    
+    z-index: 2000;
+
     background-color: rgba(30, 30, 30, 0.95);
     border: 1px solid var(--color-gray);
     border-radius: 8px;
@@ -245,18 +289,24 @@ body.show-settings #config-panel {
 
 /* ▼ 修正: 設定パネル内の英語表記（上下） */
 .en-text-config {
-    display: block; /* 上下に変更 */
-    color: #ccc; /* 明るいグレー */
+    display: block;
+    /* 上下に変更 */
+    color: #ccc;
+    /* 明るいグレー */
     font-size: 14px;
     font-weight: normal;
-    margin-top: 4px; /* 日本語との間隔 */
+    margin-top: 4px;
+    /* 日本語との間隔 */
 }
+
 .en-text-config-label {
     display: block;
     font-size: 12px;
-    color: #ccc; /* 明るいグレー */
+    color: #ccc;
+    /* 明るいグレー */
     margin-top: 2px;
 }
+
 /* ▲ 修正ここまで ▲ */
 
 
@@ -266,14 +316,17 @@ body.show-settings #config-panel {
     align-items: center;
     margin-bottom: 15px;
 }
+
 .config-row label {
     font-size: 14px;
     line-height: 1.4;
 }
+
 .config-row input {
     font-size: 14px;
     width: 60px;
 }
+
 .config-row input[type="checkbox"] {
     width: auto;
     height: 18px;
@@ -289,7 +342,7 @@ body.show-settings #config-panel {
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: 50; 
+    z-index: 50;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -302,10 +355,11 @@ body.show-settings #config-panel {
 
 /* ▼ 修正: 日英併記（上下）用にレイアウト変更 ▼ */
 #drop-prompt-text {
-    width: 550px; 
+    width: 550px;
     box-sizing: border-box;
     font-size: 16px;
-    color: var(--color-gray); /* (背景色) */
+    color: var(--color-gray);
+    /* (背景色) */
     text-align: left;
     line-height: 1.6;
     border: 3px dashed var(--color-gray);
@@ -326,13 +380,16 @@ body.pdf-loaded #drop-prompt {
     margin-bottom: 5px;
     color: var(--color-light-gray);
 }
+
 .prompt-subtitle {
     display: block;
     font-size: 16px;
     font-weight: normal;
-    color: #ccc; /* 明るいグレー */
+    color: #ccc;
+    /* 明るいグレー */
     text-align: center;
-    margin-bottom: 20px; /* リストとの間隔 */
+    margin-bottom: 20px;
+    /* リストとの間隔 */
 }
 
 .prompt-controls {
@@ -348,6 +405,7 @@ body.pdf-loaded #drop-prompt {
     align-items: center;
     /* justify-content: space-between;  */
 }
+
 .prompt-controls li:last-child {
     margin-bottom: 0;
 }
@@ -361,23 +419,29 @@ body.pdf-loaded #drop-prompt {
     padding: 2px 8px;
     font-family: "SF Mono", "Consolas", monospace;
     font-size: 14px;
-    min-width: 140px; 
+    min-width: 140px;
     text-align: center;
-    margin-right: 15px; /* 説明文とのマージン */
+    margin-right: 15px;
+    /* 説明文とのマージン */
     flex-shrink: 0;
 }
 
 .desc {
     text-align: left;
     font-size: 15px;
-    line-height: 1.3; /* 行間を詰める */
+    line-height: 1.3;
+    /* 行間を詰める */
 }
 
 .en-text {
-    display: block; /* 上下に変更 */
+    display: block;
+    /* 上下に変更 */
     font-size: 14px;
-    color: #ccc; /* 明るいグレー */
+    color: #ccc;
+    /* 明るいグレー */
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    margin-top: 2px; /* 日本語との間隔 */
+    margin-top: 2px;
+    /* 日本語との間隔 */
 }
+
 /* ▲ 修正ここまで ▲ */
