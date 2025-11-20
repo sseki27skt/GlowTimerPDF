@@ -430,3 +430,16 @@ function toggleSettingsPanel() {
         configCountdownSeconds.value = appConfig.countdownSeconds;
     }
 }
+
+// 13. ウィンドウリサイズ対応
+let resizeTimeout;
+window.addEventListener('resize', () => {
+    // PDFが読み込まれていない場合は何もしない
+    if (!appState.pdfDoc) return;
+
+    // 連続してイベントが発生するので、少し待ってから処理する (デバウンス処理)
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(() => {
+        renderPage(appState.currentPage);
+    }, 200); // 0.2秒後に再描画
+});
