@@ -1,4 +1,4 @@
-// script.js (設定機能・日英併記対応版)
+// script.js (PDF & 画像 両対応版)
 
 // 1. pdf.js ワーカーの設定
 const { pdfjsLib } = window;
@@ -13,29 +13,36 @@ const appConfig = {
 
 // 3. グローバル状態管理
 const appState = {
+    mode: null,      // 'pdf' or 'image'
+    // PDF用
     pdfDoc: null,
+    renderTask: null,
+    // 画像用
+    images: [],
+    currentImageUrl: null,
+    
+    // 共通
     currentPage: 1,
     totalPages: 0,
     timerId: null,
     remainingTime: 60,
-    timerState: 'stopped', // 'stopped', 'running', 'paused', 'countdown'
-    renderTask: null,
+    timerState: 'stopped', 
     countdownTimerId: null,
     countdownTime: 3,
 };
 
 // 4. DOM要素
-let fileInput, canvas, ctx, timerDisplay, loader, body, rootStyle;
+let fileInput, canvas, ctx, slideImage, timerDisplay, loader, body, rootStyle;
 let dragOverlay, countdownOverlay;
 let configPanel, configTotalTime, configUseCountdown, configCountdownSeconds;
 
 // 5. アプリケーションの初期化
 document.addEventListener('DOMContentLoaded', () => {
     
-    // 5.1. DOM要素の取得
     fileInput = document.getElementById('fileInput');
     canvas = document.getElementById('pdf-canvas');
     ctx = canvas.getContext('2d');
+    slideImage = document.getElementById('slide-image'); // 新規追加
     timerDisplay = document.getElementById('timerDisplay');
     loader = document.getElementById('loader');
     dragOverlay = document.getElementById('drag-overlay');
@@ -47,91 +54,199 @@ document.addEventListener('DOMContentLoaded', () => {
     configUseCountdown = document.getElementById('config-use-countdown');
     configCountdownSeconds = document.getElementById('config-countdown-seconds');
 
-    // 5.2. イベントリスナーの設定
     fileInput.addEventListener('change', handleFileChange);
     window.addEventListener('keydown', handleKeyDown);
     setupDragDropListeners();
     setupConfigListeners();
 
-    // 5.3. 初期UI状態の設定
     resetTimer(); 
 });
 
 
-// 6. PDF処理
-async function loadPdfFile(file) {
-    if (!file || file.type !== 'application/pdf') {
-        // ▼ 修正: アラートを日英併記
-        alert('PDFファイルのみドロップしてください。\nPlease drop PDF files only.');
-        return;
-    }
+// 6. ファイル読み込み処理の分岐
+async function loadFiles(fileList) {
+    if (!fileList || fileList.length === 0) return;
 
+    // 前回の状態をクリア
+    cleanupPreviousFile();
     loader.style.display = 'block';
+
+    const files = Array.from(fileList);
+    
+    // 判別ロジック
+    // 1. PDFファイルが1つでも含まれていれば、最初のPDFをロード (複数PDFは非対応で、最初の1つを優先)
+    const pdfFile = files.find(f => f.type === 'application/pdf');
+    
+    if (pdfFile) {
+        // --- PDFモード ---
+        await loadPdfMode(pdfFile);
+    } else {
+        // --- 画像モード ---
+        // 画像ファイルのみ抽出
+        const imageFiles = files.filter(f => f.type.startsWith('image/'));
+        if (imageFiles.length > 0) {
+            await loadImageMode(imageFiles);
+        } else {
+            alert('対応していないファイル形式です。\nUnsupported file format.');
+            loader.style.display = 'none';
+        }
+    }
+}
+
+function cleanupPreviousFile() {
+    // 共通クリーンアップ
+    body.classList.remove('pdf-loaded');
+    appState.mode = null;
+    appState.currentPage = 1;
+    appState.totalPages = 0;
+
+    // PDFクリーンアップ
     if (appState.pdfDoc) {
         appState.pdfDoc.destroy();
         appState.pdfDoc = null;
-        body.classList.remove('pdf-loaded'); 
+    }
+    if (appState.renderTask) {
+        appState.renderTask.cancel();
+        appState.renderTask = null;
     }
 
+    // 画像クリーンアップ
+    if (appState.currentImageUrl) {
+        URL.revokeObjectURL(appState.currentImageUrl);
+        appState.currentImageUrl = null;
+    }
+    appState.images = [];
+}
+
+// 6-A. PDFモードの読み込み
+async function loadPdfMode(file) {
     try {
+        appState.mode = 'pdf';
         const arrayBuffer = await file.arrayBuffer();
         const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-        const pdfDoc = await loadingTask.promise;
-        
-        appState.pdfDoc = pdfDoc;
-        appState.totalPages = pdfDoc.numPages;
-        appState.currentPage = 1;
+        appState.pdfDoc = await loadingTask.promise;
+        appState.totalPages = appState.pdfDoc.numPages;
 
-        await renderPage(appState.currentPage);
+        // ビューア切り替え
+        canvas.style.display = 'block';
+        slideImage.style.display = 'none';
+
+        await renderPage(1);
         resetTimer();
-
-        body.classList.add('pdf-loaded'); 
+        body.classList.add('pdf-loaded');
 
     } catch (error) {
-        console.error('PDFの読み込みに失敗しました:', error);
-        // ▼ 修正: アラートを日英併記
+        console.error('PDF Load Error:', error);
         alert('PDFの読み込みに失敗しました。\nFailed to load PDF.');
-        body.classList.remove('pdf-loaded'); 
     } finally {
         loader.style.display = 'none';
     }
 }
 
+// 6-B. 画像モードの読み込み
+async function loadImageMode(files) {
+    try {
+        appState.mode = 'image';
+        // ファイル名順にソート
+        files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+        appState.images = files;
+        appState.totalPages = files.length;
+
+        // ビューア切り替え
+        canvas.style.display = 'none';
+        slideImage.style.display = 'block';
+
+        await renderPage(1);
+        resetTimer();
+        body.classList.add('pdf-loaded'); // CSSクラスは再利用
+
+    } catch (error) {
+        console.error('Image Load Error:', error);
+        alert('画像の読み込みに失敗しました。\nFailed to load images.');
+    } finally {
+        loader.style.display = 'none';
+    }
+}
+
+
 async function handleFileChange(e) {
-    const file = e.target.files[0];
-    if (file) { await loadPdfFile(file); }
+    await loadFiles(e.target.files);
     fileInput.value = null; 
 }
+
+// 7. 描画処理 (共通エントリーポイント)
 async function renderPage(pageNum) {
-    if (!appState.pdfDoc || pageNum < 1 || pageNum > appState.totalPages) return;
+    if (pageNum < 1 || pageNum > appState.totalPages) return;
+    
+    appState.currentPage = pageNum;
+    loader.style.display = 'block';
+
+    if (appState.mode === 'pdf') {
+        await renderPdfPage(pageNum);
+    } else if (appState.mode === 'image') {
+        await renderImagePage(pageNum);
+    }
+    
+    loader.style.display = 'none';
+}
+
+// 7-A. PDF描画
+async function renderPdfPage(pageNum) {
+    if (!appState.pdfDoc) return;
     if (appState.renderTask) { appState.renderTask.cancel(); }
+
     try {
-        loader.style.display = 'block';
         const page = await appState.pdfDoc.getPage(pageNum);
         const container = document.getElementById('pdf-viewer-container');
         const viewport = page.getViewport({ scale: 1 });
+        
+        // コンテナに収まるスケールを計算
         const scale = Math.min(
             container.clientWidth / viewport.width, 
             container.clientHeight / viewport.height
         );
         const scaledViewport = page.getViewport({ scale });
+
         canvas.width = scaledViewport.width;
         canvas.height = scaledViewport.height;
+
         const renderContext = { canvasContext: ctx, viewport: scaledViewport };
         appState.renderTask = page.render(renderContext);
         await appState.renderTask.promise;
-        appState.currentPage = pageNum;
     } catch (error) {
         if (error.name !== 'RenderingCancelledException') {
-            console.error('ページのレンダリングに失敗:', error);
+            console.error('PDF Render Error:', error);
         }
-    } finally {
-        loader.style.display = 'none';
-        appState.renderTask = null;
     }
 }
 
-// 7. タイマーロジック
+// 7-B. 画像描画
+async function renderImagePage(pageNum) {
+    if (appState.images.length === 0) return;
+
+    try {
+        const file = appState.images[pageNum - 1];
+        
+        if (appState.currentImageUrl) {
+            URL.revokeObjectURL(appState.currentImageUrl);
+        }
+        
+        const url = URL.createObjectURL(file);
+        appState.currentImageUrl = url;
+
+        // 読み込み完了待ち
+        await new Promise((resolve, reject) => {
+            slideImage.onload = () => resolve();
+            slideImage.onerror = () => reject();
+            slideImage.src = url;
+        });
+
+    } catch (error) {
+        console.error('Image Render Error:', error);
+    }
+}
+
+// 8. タイマーロジック (変更なし)
 function startCountdown() {
     if (appState.timerState === 'countdown' || appState.timerState === 'running') return;
     clearInterval(appState.timerId);
@@ -147,10 +262,9 @@ function startCountdown() {
         appState.countdownTime--;
         updateCountdownUI();
 
-        if (appState.countdownTime <= 0) { // 「0」を表示せずに終了
+        if (appState.countdownTime <= 0) { 
             clearInterval(appState.countdownTimerId);
             appState.countdownTimerId = null;
-            
             updateCountdownUI(); 
             startTimer();
         }
@@ -159,35 +273,21 @@ function startCountdown() {
 
 function startTimer() {
     if (appState.timerState === 'running' && appState.timerId) return;
-    
     appState.timerState = 'running';
     clearInterval(appState.timerId); 
     appState.timerId = setInterval(tick, 100); 
-    
     updateTimerUI();
 }
 
 function pauseTimer() {
     if (appState.timerState !== 'running' && appState.timerState !== 'countdown') return;
-    
     appState.timerState = 'paused';
     clearInterval(appState.timerId); 
     appState.timerId = null;
     clearInterval(appState.countdownTimerId); 
     appState.countdownTimerId = null;
-    
     updateTimerUI();
     updateCountdownUI();
-}
-
-function resumeTimer() {
-    if (appState.timerState !== 'paused') return;
-    
-    if (appConfig.useCountdown && appState.remainingTime === appConfig.totalTime) {
-        startCountdown();
-    } else {
-        startTimer(); 
-    }
 }
 
 function resetTimer() {
@@ -195,22 +295,17 @@ function resetTimer() {
     appState.timerId = null;
     clearInterval(appState.countdownTimerId); 
     appState.countdownTimerId = null;
-    
     appState.remainingTime = appConfig.totalTime; 
     appState.timerState = 'stopped';
-    
     updateTimerUI();
     updateCountdownUI();
 }
 
 function tick() {
-    if (appState.timerState !== 'running') {
-        return; 
-    }
+    if (appState.timerState !== 'running') return;
     appState.remainingTime -= 0.1;
     updateTimerUI();
 }
-
 
 function mapRange(value, inMin, inMax, outMin, outMax) {
     const val = Math.max(Math.min(value, inMax), inMin);
@@ -218,15 +313,12 @@ function mapRange(value, inMin, inMax, outMin, outMax) {
     return ratio * (outMax - outMin) + outMin;
 }
 
-
-// 8. UI更新 (メインの枠色)
+// 9. UI更新 (変更なし)
 function updateTimerUI() {
-    if (!timerDisplay || !rootStyle || !body) {
-        return;
-    }
+    if (!timerDisplay || !rootStyle || !body) return;
 
     const time = appState.remainingTime;
-    const displayTime = Math.ceil(time); // 「0」を1秒表示するロジック
+    const displayTime = Math.ceil(time); 
     timerDisplay.textContent = displayTime;
 
     let currentHue;
@@ -241,17 +333,14 @@ function updateTimerUI() {
             newColorHsl = 'var(--color-gray)';
             newColorHsla = 'rgba(52, 73, 94, 0.5)';
         } else {
-            // 色変化のポイント (11秒, 5秒)
             if (time > 11) { currentHue = HUE_GREEN; }
             else if (time > 10) { currentHue = mapRange(time, 10, 11, HUE_YELLOW, HUE_GREEN); }
             else if (time > 5) { currentHue = HUE_YELLOW; }
             else if (time > 4) { currentHue = mapRange(time, 4, 5, HUE_RED, HUE_YELLOW); }
-            else { currentHue = HUE_RED; } // 4秒以下 (マイナス含む) は赤
-
+            else { currentHue = HUE_RED; } 
             newColorHsl = `hsl(${currentHue}, ${saturation}%, ${lightness}%)`;
             newColorHsla = `hsla(${currentHue}, ${saturation}%, ${lightness}%, 0.5)`;
         }
-        
         rootStyle.setProperty('--timer-color', newColorHsl);
         rootStyle.setProperty('--timer-color-alpha', newColorHsla);
     } else {
@@ -262,24 +351,22 @@ function updateTimerUI() {
 
     if (appState.timerState === 'running') {
         if (time <= 0) {
-            body.classList.add('timer-over'); // 赤い高速明滅
+            body.classList.add('timer-over'); 
         } else {
-            body.classList.add('timer-running'); // 通常呼吸
+            body.classList.add('timer-running'); 
         }
     } else if (appState.timerState === 'countdown') {
         body.classList.add('timer-countdown');
     } else if (appState.timerState === 'paused') {
         body.classList.add('timer-paused'); 
-    } else { // 'stopped'
+    } else { 
         body.classList.add('timer-stopped');
     }
 }
 
-// 8.5 UI更新 (カウントダウン数字)
 function updateCountdownUI() {
     if (!countdownOverlay) return;
-
-    if (appState.timerState === 'countdown' && appState.countdownTime > 0) { // 「0」は表示しない
+    if (appState.timerState === 'countdown' && appState.countdownTime > 0) { 
         countdownOverlay.textContent = appState.countdownTime;
         countdownOverlay.style.display = 'flex';
         setTimeout(() => { countdownOverlay.style.opacity = '1'; }, 10); 
@@ -292,28 +379,20 @@ function updateCountdownUI() {
     }
 }
 
-
-// 9. キーボードショートカット
+// 10. キーボードショートカット
 function handleKeyDown(e) {
-    if (body.classList.contains('show-settings') && e.key !== 's' && e.key !== 'S') {
-        return;
-    }
+    if (body.classList.contains('show-settings') && e.key !== 's' && e.key !== 'S') return;
+    
+    // モードがセットされていなければ操作無効
+    if (!appState.mode && e.key !== 's' && e.key !== 'S') return;
+    if ((e.ctrlKey || e.metaKey) && e.key === 'o') return;
 
-    if (!appState.pdfDoc && e.key !== 's' && e.key !== 'S') { 
-        return;
-    }
-    if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
-        return; 
-    }
-
-    // Pキーを削除
     const preventKeys = ['ArrowRight', 'ArrowLeft', ' ', 'Backspace', 'Enter', 'r', 'f', 'F', 's', 'S'];
     if (preventKeys.includes(e.key)) {
         e.preventDefault();
     }
 
     switch (e.key) {
-        
         case 'Enter': 
         case 'ArrowRight':
             if (appState.currentPage < appState.totalPages) {
@@ -331,7 +410,6 @@ function handleKeyDown(e) {
             break;
 
         case ' ':
-            // Pキーのケースを削除 (Spaceに統合)
             if (appState.timerState === 'running') {
                 pauseTimer();
             } else if (appState.timerState === 'countdown') {
@@ -362,7 +440,7 @@ function handleKeyDown(e) {
     }
 }
 
-// 10. ドラッグ＆ドロップ設定
+// 11. ドラッグ＆ドロップ設定 (loadFilesへ委譲)
 function setupDragDropListeners() {
     window.addEventListener('dragover', (e) => {
         e.preventDefault();
@@ -379,19 +457,14 @@ function setupDragDropListeners() {
         e.preventDefault();
         body.classList.remove('dragging');
         dragOverlay.style.display = 'none';
-        let file;
-        if (e.dataTransfer.items) {
-            if (e.dataTransfer.items[0].kind === 'file') {
-                file = e.dataTransfer.items[0].getAsFile();
-            }
-        } else {
-            file = e.dataTransfer.files[0];
+        
+        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            await loadFiles(e.dataTransfer.files);
         }
-        if (file) { await loadPdfFile(file); }
     });
 }
 
-// 11. 全画面切り替え
+// 12. 全画面・設定・リサイズ
 function toggleFullScreen() {
     if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen();
@@ -402,7 +475,6 @@ function toggleFullScreen() {
     }
 }
 
-// 12. 設定パネル
 function setupConfigListeners() {
     configTotalTime.addEventListener('change', (e) => {
         const value = parseInt(e.target.value, 10);
@@ -431,15 +503,13 @@ function toggleSettingsPanel() {
     }
 }
 
-// 13. ウィンドウリサイズ対応
 let resizeTimeout;
 window.addEventListener('resize', () => {
-    // PDFが読み込まれていない場合は何もしない
-    if (!appState.pdfDoc) return;
-
-    // 連続してイベントが発生するので、少し待ってから処理する (デバウンス処理)
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
-        renderPage(appState.currentPage);
-    }, 200); // 0.2秒後に再描画
+    if (appState.mode === 'pdf' && appState.pdfDoc) {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            renderPage(appState.currentPage);
+        }, 200);
+    }
+    // 画像モードの場合はCSSのmax-width/max-heightで追従するので再描画不要
 });

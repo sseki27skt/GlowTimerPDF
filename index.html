@@ -1,17 +1,9 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-SWPN9LKKDE"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'G-SWPN9LKKDE');
-</script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GlowTimer PDF Presenter</title>
+    <title>GlowTimer Presenter (PDF & Images)</title>
 
     <link rel="stylesheet" href="style.css">
 
@@ -23,16 +15,17 @@
 
 <div id="pdf-viewer-container">
         <canvas id="pdf-canvas"></canvas>
+        <img id="slide-image" alt="slide" style="display:none;">
         
         <div id="drop-prompt">
             <div id="drop-prompt-text">
                 <div class="prompt-title">
-                    ここにPDFをドラッグ＆ドロップ
-                    <span class="prompt-subtitle">Drag & Drop PDF file here</span>
+                    ここに PDF または 画像 をドロップ
+                    <span class="prompt-subtitle">Drag & Drop PDF or Image files</span>
                 </div>
                 <ul class="prompt-controls">
                     <li>
-                        <span class="key">[ Space ] / [ P ]</span> 
+                        <span class="key">[ Space ]</span> 
                         <span class="desc">
                             タイマー スタート / 一時停止
                             <span class="en-text">Start / Pause</span>
@@ -41,15 +34,15 @@
                     <li>
                         <span class="key">[ ← ] / [ → ]</span> 
                         <span class="desc">
-                            ページ送り (タイマーリセット)
-                            <span class="en-text">Next / Prev Page (Reset Timer)</span>
+                            ページ送り
+                            <span class="en-text">Next / Prev Page</span>
                         </span>
                     </li>
                     <li>
                         <span class="key">[ R ]</span> 
                         <span class="desc">
-                            タイマーリセット (現在のページ)
-                            <span class="en-text">Reset Timer (Current Page)</span>
+                            リセット
+                            <span class="en-text">Reset Timer</span>
                         </span>
                     </li>
                     <li>
@@ -62,25 +55,24 @@
                     <li>
                         <span class="key">[ S ]</span> 
                         <span class="desc">
-                            設定パネル
+                            設定
                             <span class="en-text">Settings</span>
                         </span>
                     </li>
                 </ul>
             </div>
         </div>
-        </div>
+</div>
 
-    <input type="file" id="fileInput" accept="application/pdf">
+    <input type="file" id="fileInput" accept="application/pdf, image/*" multiple>
 
     <div id="timerDisplay">60</div>
-
     <div id="loader"></div>
 
     <div id="drag-overlay">
         <div id="drag-overlay-text">
-            PDFファイルをここにドロップ
-            <span class="drag-overlay-subtext">Drop PDF file here</span>
+            ファイルをここにドロップ
+            <span class="drag-overlay-subtext">Drop files here</span>
         </div>
     </div>
 

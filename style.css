@@ -101,11 +101,20 @@ body.timer-over {
     align-items: center;
 }
 
+
 #pdf-canvas {
     max-width: 100%;
     max-height: 100%;
-    display: block;
+    display: block; /* JSで block/none を切り替えます */
     border-radius: 4px;
+}
+
+#slide-image {
+    max-width: 100%;
+    max-height: 100%;
+    display: none; /* JSで制御 */
+    border-radius: 4px;
+    object-fit: contain; /* アスペクト比を維持 */
 }
 
 /* * 5. UIコントロール 
